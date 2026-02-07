@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Disciplinarian Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+        
+        <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-2xl font-bold text-blue-400 uppercase tracking-tighter">Trade Validator</h1>
+                        <p class="text-slate-400 text-xs">Stay disciplined. Follow the plan.</p>
+                    </div>
+                    <select id="asset-select" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="XAUUSD">XAUUSD</option>
+                        <option value="NASDAQ">NASDAQ</option>
+                    </select>
+                </div>
+
+                <div id="rules-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700">
+                    <button id="submit-btn" disabled 
+                        class="w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase">
+                        Log & Execute Trade
+                    </button>
+                    <p id="warning-msg" class="text-center text-xs text-red-400 mt-3 italic">
+                        Check all boxes to unlock.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-300 uppercase tracking-wide">Trade History</h2>
+                <button onclick="clearAllHistory()" class="text-[10px] text-slate-500 hover:text-red-400 uppercase font-semibold">Clear All</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-slate-500 border-b border-slate-700 uppercase text-[10px] tracking-widest">
+                            <th class="pb-2">Date/Time</th>
+                            <th class="pb-2">Asset</th>
+                            <th class="pb-2 text-right pr-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body" class="divide-y divide-slate-700">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rules = [
+            "Price at POI",
+            "Risk-to-Reward 1:2+",
+            "NY/London Overlap",
+            "No High-Impact News",
+            "Market Structure Shift"
+        ];
+
+        const container = document.getElementById('rules-container');
+        const submitBtn = document.getElementById('submit-btn');
+        const warningMsg = document.getElementById('warning-msg');
+        const historyBody = document.getElementById('history-body');
+        const assetSelect = document.getElementById('asset-select');
+
+        // Initialize Rules
+        rules.forEach((rule, index) => {
+            const div = document.createElement('div');
+            div.className = "flex items-center space-x-3 p-3 rounded-lg bg-slate-900/50 border border-slate-700 hover:bg-slate-700 transition-colors";
+            div.innerHTML = `
+                <input type="checkbox" id="rule-${index}" class="rule-check w-4 h-4 accent-blue-500 cursor-pointer">
+                <label for="rule-${index}" class="flex-1 cursor-pointer text-xs uppercase tracking-wider">${rule}</label>
+            `;
+            container.appendChild(div);
+        });
+
+        // Validation Logic
+        container.addEventListener('change', () => {
+            const allChecked = document.querySelectorAll('.rule-check:checked').length === rules.length;
+            submitBtn.disabled = !allChecked;
+            
+            if (allChecked) {
+                submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase";
+                warningMsg.classList.add('hidden');
+            } else {
+                submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase";
+                warningMsg.classList.remove('hidden');
+            }
+        });
+
+        // Load History
+        function loadHistory() {
+            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
+            historyBody.innerHTML = ''; // Clear current display
+
+            // We iterate in reverse so newest is on top
+            [...logs].reverse().forEach((log, reversedIndex) => {
+                // Calculate actual index in the original array
+                const actualIndex = logs.length - 1 - reversedIndex;
+                
+                const tr = document.createElement('tr');
+                tr.className = "text-slate-300 hover:bg-slate-750 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 text-[12px] text-slate-400">${log.time}</td>
+                    <td class="py-3 font-mono text-blue-400 font-bold">${log.asset}</td>
+                    <td class="py-3 text-right">
+                        <button onclick="deleteTrade(${actualIndex})" class="text-red-400 hover:text-red-300 bg-red-900/20 px-2 py-1 rounded text-xs transition-all">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                historyBody.appendChild(tr);
+            });
+        }
+
+        // Save Trade
+        submitBtn.addEventListener('click', () => {
+            const newLog = {
+                time: new Date().toLocaleString(),
+                asset: assetSelect.value
+            };
+
+            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
+            logs.push(newLog);
+            localStorage.setItem('tradeLogs', JSON.stringify(logs));
+
+            // Reset UI
+            document.querySelectorAll('.rule-check').forEach(cb => cb.checked = false);
+            submitBtn.disabled = true;
+            submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase";
+            warningMsg.classList.remove('hidden');
+            
+            loadHistory();
+        });
+
+        // Delete Specific Trade
+        window.deleteTrade = (index) => {
+            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
+            logs.splice(index, 1); // Remove the item at this index
+            localStorage.setItem('tradeLogs', JSON.stringify(logs));
+            loadHistory();
+        };
+
+        // Clear All
+        window.clearAllHistory = () => {
+            if(confirm("Wipe entire trade history?")) {
+                localStorage.removeItem('tradeLogs');
+                loadHistory();
+            }
+        };
+
+        loadHistory();
+    </script>
+</body>
+</html>
