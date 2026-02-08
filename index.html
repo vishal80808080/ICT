@@ -3,163 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trade Disciplinarian Pro</title>
+    <title>AlphaTrade | Pure Performance</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .modal-overlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .chart-container { position: relative; height: 100%; width: 100%; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
-    <div class="max-w-2xl mx-auto space-y-6">
-        
-        <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h1 class="text-2xl font-bold text-blue-400 uppercase tracking-tighter">Trade Validator</h1>
-                        <p class="text-slate-400 text-xs">Stay disciplined. Follow the plan.</p>
-                    </div>
-                    <select id="asset-select" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="XAUUSD">XAUUSD</option>
-                        <option value="NASDAQ">NASDAQ</option>
-                    </select>
-                </div>
+<body class="min-h-screen p-4 md:p-6">
 
-                <div id="rules-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    </div>
+    <div id="outcome-modal" class="fixed inset-0 modal-overlay z-[100] hidden flex items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-[2rem] border border-slate-700 shadow-2xl">
+            <h3 id="modal-title" class="text-2xl font-black uppercase italic text-center mb-6"></h3>
+            <input type="number" id="modal-input" step="0.1" class="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl p-4 text-3xl font-black text-center text-white outline-none focus:border-emerald-500 mb-6">
+            <div class="flex gap-3">
+                <button onclick="ui.closeModal()" class="flex-1 py-4 text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                <button id="modal-confirm-btn" onclick="ui.handleModalConfirm()" class="flex-1 py-4 rounded-xl text-[10px] font-black uppercase text-white shadow-lg"></button>
+            </div>
+        </div>
+    </div>
 
-                <div class="mt-8 pt-6 border-t border-slate-700">
-                    <button id="submit-btn" disabled 
-                        class="w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase">
-                        Log & Execute Trade
-                    </button>
-                    <p id="warning-msg" class="text-center text-xs text-red-400 mt-3 italic">
-                        Check all boxes to unlock.
-                    </p>
-                </div>
+    <div class="max-w-[1600px] mx-auto space-y-6">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="glass p-6 rounded-3xl border-l-4 border-emerald-500">
+                <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Portfolio PNL</p>
+                <p id="stat-cash" class="text-3xl font-black text-emerald-400">$0.00</p>
+            </div>
+            <div class="glass p-6 rounded-3xl border-l-4 border-emerald-400">
+                <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Total Wins</p>
+                <p id="stat-wins" class="text-3xl font-black text-emerald-400">0</p>
+            </div>
+            <div class="glass p-6 rounded-3xl border-l-4 border-rose-500">
+                <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Total Losses</p>
+                <p id="stat-losses" class="text-3xl font-black text-rose-500">0</p>
+            </div>
+            <div class="glass p-6 rounded-3xl border-l-4 border-slate-600">
+                <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Win Rate</p>
+                <p id="stat-winrate" class="text-3xl font-black text-white">0%</p>
+            </div>
+            <div class="glass p-6 rounded-3xl border-l-4 border-blue-500">
+                <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Avg Reward</p>
+                <p id="stat-avg-rr" class="text-3xl font-black text-blue-400">0.0R</p>
             </div>
         </div>
 
-        <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-slate-300 uppercase tracking-wide">Trade History</h2>
-                <button onclick="clearAllHistory()" class="text-[10px] text-slate-500 hover:text-red-400 uppercase font-semibold">Clear All</button>
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div class="xl:col-span-3">
+                <div class="glass p-6 rounded-[2rem] border border-slate-800/50">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Protocol</h2>
+                        <span id="utc-clock" class="text-[10px] font-mono text-slate-500 font-bold">00:00 UTC</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div id="rules-box" class="space-y-2"></div>
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <input type="number" id="risk" placeholder="Risk $" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500 transition-all">
+                            <input type="number" id="target" placeholder="Target R" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500 transition-all">
+                        </div>
+                        <button id="log-btn" disabled onclick="ui.logTrade()" class="w-full py-5 rounded-xl font-black bg-slate-800 text-slate-500 cursor-not-allowed uppercase text-[10px] tracking-widest transition-all">Submit Setup</button>
+                    </div>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-500 border-b border-slate-700 uppercase text-[10px] tracking-widest">
-                            <th class="pb-2">Date/Time</th>
-                            <th class="pb-2">Asset</th>
-                            <th class="pb-2 text-right pr-4">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-body" class="divide-y divide-slate-700">
-                        </tbody>
-                </table>
+
+            <div class="xl:col-span-5">
+                <div class="glass p-6 rounded-[2.5rem] border border-slate-800/50 h-[500px] flex flex-col">
+                    <h2 class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6">Equity Performance</h2>
+                    <div class="flex-1 chart-container">
+                        <canvas id="equityCurve"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="xl:col-span-4">
+                <div class="glass rounded-[2.5rem] border border-slate-800/50 h-[500px] flex flex-col overflow-hidden">
+                    <div class="p-6 border-b border-slate-800/50 flex justify-between items-center">
+                        <h2 class="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">History</h2>
+                        <button onclick="ui.wipe()" class="text-[9px] text-slate-600 hover:text-red-500 font-bold uppercase transition-colors">Wipe</button>
+                    </div>
+                    <div class="overflow-y-auto flex-1">
+                        <table class="w-full text-left">
+                            <tbody id="history-rows" class="divide-y divide-slate-800/30"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const rules = [
-            "Price at POI",
-            "Risk-to-Reward 1:2+",
-            "NY/London Overlap",
-            "No High-Impact News",
-            "Market Structure Shift"
-        ];
-
-        const container = document.getElementById('rules-container');
-        const submitBtn = document.getElementById('submit-btn');
-        const warningMsg = document.getElementById('warning-msg');
-        const historyBody = document.getElementById('history-body');
-        const assetSelect = document.getElementById('asset-select');
-
-        // Initialize Rules
-        rules.forEach((rule, index) => {
-            const div = document.createElement('div');
-            div.className = "flex items-center space-x-3 p-3 rounded-lg bg-slate-900/50 border border-slate-700 hover:bg-slate-700 transition-colors";
-            div.innerHTML = `
-                <input type="checkbox" id="rule-${index}" class="rule-check w-4 h-4 accent-blue-500 cursor-pointer">
-                <label for="rule-${index}" class="flex-1 cursor-pointer text-xs uppercase tracking-wider">${rule}</label>
-            `;
-            container.appendChild(div);
-        });
-
-        // Validation Logic
-        container.addEventListener('change', () => {
-            const allChecked = document.querySelectorAll('.rule-check:checked').length === rules.length;
-            submitBtn.disabled = !allChecked;
-            
-            if (allChecked) {
-                submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/40 uppercase";
-                warningMsg.classList.add('hidden');
-            } else {
-                submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase";
-                warningMsg.classList.remove('hidden');
-            }
-        });
-
-        // Load History
-        function loadHistory() {
-            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
-            historyBody.innerHTML = ''; // Clear current display
-
-            // We iterate in reverse so newest is on top
-            [...logs].reverse().forEach((log, reversedIndex) => {
-                // Calculate actual index in the original array
-                const actualIndex = logs.length - 1 - reversedIndex;
-                
-                const tr = document.createElement('tr');
-                tr.className = "text-slate-300 hover:bg-slate-750 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-3 text-[12px] text-slate-400">${log.time}</td>
-                    <td class="py-3 font-mono text-blue-400 font-bold">${log.asset}</td>
-                    <td class="py-3 text-right">
-                        <button onclick="deleteTrade(${actualIndex})" class="text-red-400 hover:text-red-300 bg-red-900/20 px-2 py-1 rounded text-xs transition-all">
-                            Delete
-                        </button>
-                    </td>
-                `;
-                historyBody.appendChild(tr);
-            });
+        class DB {
+            static set(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+            static get(k) { return JSON.parse(localStorage.getItem(k) || '[]'); }
         }
 
-        // Save Trade
-        submitBtn.addEventListener('click', () => {
-            const newLog = {
-                time: new Date().toLocaleString(),
-                asset: assetSelect.value
-            };
-
-            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
-            logs.push(newLog);
-            localStorage.setItem('tradeLogs', JSON.stringify(logs));
-
-            // Reset UI
-            document.querySelectorAll('.rule-check').forEach(cb => cb.checked = false);
-            submitBtn.disabled = true;
-            submitBtn.className = "w-full py-3 rounded-lg font-bold transition-all duration-300 bg-slate-700 text-slate-500 cursor-not-allowed uppercase";
-            warningMsg.classList.remove('hidden');
-            
-            loadHistory();
-        });
-
-        // Delete Specific Trade
-        window.deleteTrade = (index) => {
-            const logs = JSON.parse(localStorage.getItem('tradeLogs') || '[]');
-            logs.splice(index, 1); // Remove the item at this index
-            localStorage.setItem('tradeLogs', JSON.stringify(logs));
-            loadHistory();
-        };
-
-        // Clear All
-        window.clearAllHistory = () => {
-            if(confirm("Wipe entire trade history?")) {
-                localStorage.removeItem('tradeLogs');
-                loadHistory();
+        class Trade {
+            constructor(d) {
+                this.id = d.id || crypto.randomUUID();
+                this.risk = parseFloat(d.risk);
+                this.target = parseFloat(d.target);
+                this.outcome = d.outcome || 'pending';
+                this.actualRR = parseFloat(d.actualRR || 0);
+                this.date = d.date || Date.now();
             }
-        };
+            get pnl() {
+                if (this.outcome === 'pending') return 0;
+                return this.outcome === 'win' ? (this.risk * this.actualRR) : -this.risk;
+            }
+        }
 
-        loadHistory();
+        class UI {
+            constructor() {
+                this.journal = DB.get('alpha_v5').map(t => new Trade(t));
+                this.rules = ["Context", "MS Shift", "Risk/Reward", "No News", "Standard Setup"];
+                this.chart = null;
+                this.init();
+            }
+
+            init() {
+                const box = document.getElementById('rules-box');
+                this.rules.forEach(r => {
+                    box.innerHTML += `<label class="flex items-center space-x-3 p-3 rounded-xl bg-slate-900/30 border border-slate-800 cursor-pointer hover:border-slate-600 transition-all">
+                        <input type="checkbox" class="rule-check w-4 h-4 accent-emerald-500">
+                        <span class="text-[10px] font-bold uppercase text-slate-500">${r}</span>
+                    </label>`;
+                });
+
+                document.addEventListener('input', (e) => {
+                    if (e.target.classList.contains('rule-check') || e.target.id === 'risk' || e.target.id === 'target') {
+                        this.validate();
+                    }
+                });
+
+                setInterval(() => {
+                    document.getElementById('utc-clock').innerText = new Date().toISOString().substr(11, 5) + " UTC";
+                }, 1000);
+
+                this.refresh();
+            }
+
+            validate() {
+                const checks = document.querySelectorAll('.rule-check:checked').length === this.rules.length;
+                const riskVal = document.getElementById('risk').value;
+                const hasRisk = riskVal !== "" && parseFloat(riskVal) > 0;
+                
+                const btn = document.getElementById('log-btn');
+                btn.disabled = !(checks && hasRisk);
+                btn.innerText = btn.disabled ? "Protocol Incomplete" : "Submit Trade";
+                btn.className = btn.disabled 
+                    ? "w-full py-5 rounded-xl font-black bg-slate-800 text-slate-500 cursor-not-allowed uppercase text-[10px] tracking-widest" 
+                    : "w-full py-5 rounded-xl font-black bg-emerald-600 text-white uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-900/40 hover:scale-[1.02] active:scale-95 transition-all";
+            }
+
+            logTrade() {
+                const t = new Trade({
+                    risk: document.getElementById('risk').value,
+                    target: document.getElementById('target').value || 2
+                });
+                this.journal.push(t);
+                DB.set('alpha_v5', this.journal);
+                this.reset();
+                this.refresh();
+            }
+
+            reset() {
+                document.getElementById('risk').value = '';
+                document.getElementById('target').value = '';
+                document.querySelectorAll('.rule-check').forEach(c => c.checked = false);
+                this.validate();
+            }
+
+            refresh() {
+                this.renderStats();
+                this.renderHistory();
+                this.renderChart();
+            }
+
+            renderStats() {
+                const s = this.journal.reduce((acc, t) => {
+                    acc.cash += t.pnl;
+                    if (t.outcome !== 'pending') {
+                        acc.closed++;
+                        if (t.outcome === 'win') {
+                            acc.wins++;
+                            acc.totalRR += t.actualRR;
+                        }
+                        if (t.outcome === 'loss') acc.losses++;
+                    }
+                    return acc;
+                }, { cash: 0, wins: 0, losses: 0, closed: 0, totalRR: 0 });
+
+                const avgRR = s.wins > 0 ? (s.totalRR / s.wins).toFixed(1) : "0.0";
+
+                document.getElementById('stat-cash').innerText = `$${s.cash.toLocaleString()}`;
+                document.getElementById('stat-wins').innerText = s.wins;
+                document.getElementById('stat-losses').innerText = s.losses;
+                document.getElementById('stat-winrate').innerText = s.closed > 0 ? Math.round((s.wins / s.closed) * 100) + '%' : '0%';
+                document.getElementById('stat-avg-rr').innerText = `${avgRR}R`;
+            }
+
+            renderHistory() {
+                const rows = document.getElementById('history-rows');
+                rows.innerHTML = [...this.journal].reverse().map(t => `
+                    <tr class="group hover:bg-slate-800/20">
+                        <td class="p-5">
+                            <span class="text-[10px] font-black uppercase text-white">${new Date(t.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                            <div class="text-[9px] text-slate-500 font-bold">$${t.risk} RISK</div>
+                        </td>
+                        <td class="p-5 text-center">
+                            ${t.outcome === 'pending' ? `
+                                <div class="flex gap-1 justify-center">
+                                    <button onclick="ui.openModal('${t.id}', 'win')" class="px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[9px] font-black rounded hover:bg-emerald-500 hover:text-white transition-all">W</button>
+                                    <button onclick="ui.openModal('${t.id}', 'loss')" class="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 text-[9px] font-black rounded hover:bg-red-500 hover:text-white transition-all">L</button>
+                                </div>
+                            ` : `<span class="text-[10px] font-black uppercase ${t.outcome === 'win' ? 'text-emerald-500' : 'text-red-500'}">${t.outcome}</span>`}
+                        </td>
+                        <td class="p-5 text-right font-mono text-[10px] ${t.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${t.outcome === 'pending' ? '--' : (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(0)}
+                        </td>
+                        <td class="p-5 text-right"><button onclick="ui.del('${t.id}')" class="text-slate-800 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">×</button></td>
+                    </tr>
+                `).join('');
+            }
+
+            openModal(id, status) {
+                this.activeId = id; this.activeStatus = status;
+                const t = this.journal.find(x => x.id === id);
+                document.getElementById('modal-title').innerText = status.toUpperCase();
+                document.getElementById('modal-title').className = `text-2xl font-black italic mb-6 ${status === 'win' ? 'text-emerald-500' : 'text-red-500'}`;
+                document.getElementById('modal-confirm-btn').className = `flex-1 py-4 rounded-xl text-[10px] font-black uppercase text-white ${status === 'win' ? 'bg-emerald-600' : 'bg-red-600'}`;
+                document.getElementById('modal-confirm-btn').innerText = "Log Final R";
+                document.getElementById('modal-input').value = status === 'win' ? t.target : 1.0;
+                document.getElementById('outcome-modal').classList.remove('hidden');
+            }
+
+            closeModal() { document.getElementById('outcome-modal').classList.add('hidden'); }
+            handleModalConfirm() {
+                const t = this.journal.find(x => x.id === this.activeId);
+                t.outcome = this.activeStatus;
+                t.actualRR = parseFloat(document.getElementById('modal-input').value);
+                DB.set('alpha_v5', this.journal);
+                this.closeModal(); this.refresh();
+            }
+            del(id) { if(confirm("Del?")) { this.journal = this.journal.filter(x => x.id !== id); DB.set('alpha_v5', this.journal); this.refresh(); } }
+            wipe() { if(confirm("Wipe?")) { this.journal = []; DB.set('alpha_v5', []); this.refresh(); } }
+
+            renderChart() {
+                const ctx = document.getElementById('equityCurve').getContext('2d');
+                let cur = 0;
+                const data = [0, ...this.journal.filter(t => t.outcome !== 'pending').map(t => cur += t.pnl)];
+                if(this.chart) this.chart.destroy();
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.map((_, i) => i),
+                        datasets: [{ data: data, borderColor: '#10b981', borderWidth: 3, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.05)', tension: 0.3, pointRadius: 4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.05)' } } } }
+                });
+            }
+        }
+
+        const ui = new UI();
     </script>
 </body>
 </html>
