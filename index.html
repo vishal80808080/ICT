@@ -119,7 +119,7 @@
         class UI {
             constructor() {
                 this.journal = DB.get('alpha_v5').map(t => new Trade(t));
-                this.rules = ["Context", "MS Shift", "Risk/Reward", "No News", "Standard Setup"];
+                this.rules = ["Context", "MS Shift", "Risk/Reward", "No News", "NY/LONDON Overlap"];
                 this.chart = null;
                 this.init();
             }
@@ -272,3 +272,4 @@
     </script>
 </body>
 </html>
+
